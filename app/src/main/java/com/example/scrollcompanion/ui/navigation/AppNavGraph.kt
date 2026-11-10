@@ -25,6 +25,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.hierarchy
 import com.example.scrollcompanion.ScrollCompanionApp
 import com.example.scrollcompanion.ui.screens.home.HomeScreen
 import com.example.scrollcompanion.ui.screens.rediscover.RediscoverScreen
