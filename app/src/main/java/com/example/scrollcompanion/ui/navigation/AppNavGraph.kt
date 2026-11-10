@@ -1,12 +1,18 @@
 package com.example.scrollcompanion.ui.navigation
 
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -15,12 +21,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Settings
-import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -46,10 +47,20 @@ enum class TopLevelDestination(
 }
 
 @Composable
-fun AppNavGraph() {
+fun AppNavGraph(
+    requestedRoute: String?,
+    onRouteHandled: () -> Unit,
+) {
     val container = (LocalContext.current.applicationContext as ScrollCompanionApp).container
     val navController = rememberNavController()
     val currentDestination = navController.currentBackStackEntryAsState().value?.destination
+
+    LaunchedEffect(requestedRoute) {
+        if (requestedRoute != null) {
+            navController.navigateToTopLevel(requestedRoute)
+            onRouteHandled()
+        }
+    }
 
     Scaffold(
         bottomBar = {
@@ -57,13 +68,7 @@ fun AppNavGraph() {
                 TopLevelDestination.entries.forEach { destination ->
                     NavigationBarItem(
                         selected = currentDestination?.hierarchy?.any { it.route == destination.route } == true,
-                        onClick = {
-                            navController.navigate(destination.route) {
-                                popUpTo(navController.graph.startDestinationId) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        },
+                        onClick = { navController.navigateToTopLevel(destination.route) },
                         icon = { Icon(destination.icon, contentDescription = destination.label) },
                         label = { Text(destination.label) },
                     )
@@ -85,9 +90,7 @@ fun AppNavGraph() {
                 val uiState by viewModel.uiState.collectAsStateWithLifecycle()
                 HomeScreen(
                     uiState = uiState,
-                    onOpenVault = {
-                        navController.navigate(TopLevelDestination.VAULT.route) { launchSingleTop = true }
-                    },
+                    onOpenVault = { navController.navigateToTopLevel(TopLevelDestination.VAULT.route) },
                 )
             }
 
@@ -109,5 +112,13 @@ fun AppNavGraph() {
                 SettingsScreen()
             }
         }
+    }
+}
+
+private fun NavHostController.navigateToTopLevel(route: String) {
+    navigate(route) {
+        popUpTo(graph.startDestinationId) { saveState = true }
+        launchSingleTop = true
+        restoreState = true
     }
 }

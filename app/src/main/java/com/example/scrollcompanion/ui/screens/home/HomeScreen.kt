@@ -20,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.scrollcompanion.ui.components.ContentCard
+import com.example.scrollcompanion.ui.components.FloatingAssistantCard
 import com.example.scrollcompanion.ui.components.EmptyState
 import com.example.scrollcompanion.viewmodel.HomeUiState
 
@@ -67,6 +68,10 @@ fun HomeScreen(
             ) {
                 Text("Open Knowledge Vault")
             }
+        }
+
+        item {
+            FloatingAssistantCard(modifier = Modifier.fillMaxWidth())
         }
 
         item {
