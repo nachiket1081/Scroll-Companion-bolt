@@ -39,7 +39,6 @@ class ScreenCaptureService : Service() {
     private var projection: MediaProjection? = null
     private var virtualDisplay: VirtualDisplay? = null
     private var imageReader: ImageReader? = null
-    private var captureArmed = false
     private var frameHandled = false
     private var finished = false
 
@@ -93,16 +92,27 @@ class ScreenCaptureService : Service() {
     }
 
     private fun startCapture(resultCode: Int, data: Intent) {
-        val metrics = resources.displayMetrics
+        FloatingAssistantService.setBubbleVisible(this, false)
         try {
-            FloatingAssistantService.setBubbleVisible(this, false)
             val mediaProjection = getSystemService(MediaProjectionManager::class.java)
                 .getMediaProjection(resultCode, data)
             projection = mediaProjection
             mediaProjection.registerCallback(projectionCallback, mainHandler)
-            val reader = ImageReader.newInstance(metrics.widthPixels, metrics.heightPixels, PixelFormat.RGBA_8888, 2)
-            imageReader = reader
-            reader.setOnImageAvailableListener({ onFrame(it) }, mainHandler)
+            val metrics = resources.displayMetrics
+            imageReader = ImageReader.newInstance(metrics.widthPixels, metrics.heightPixels, PixelFormat.RGBA_8888, 2)
+                .also { it.setOnImageAvailableListener({ reader -> onFrame(reader) }, mainHandler) }
+        } catch (e: Exception) {
+            finish(screenshotPath = null)
+            return
+        }
+        mainHandler.postDelayed({ startMirroring() }, BUBBLE_SETTLE_MS)
+    }
+
+    private fun startMirroring() {
+        val mediaProjection = projection ?: return
+        val reader = imageReader ?: return
+        val metrics = resources.displayMetrics
+        try {
             virtualDisplay = mediaProjection.createVirtualDisplay(
                 "ScrollCompanionCapture",
                 metrics.widthPixels,
@@ -117,12 +127,11 @@ class ScreenCaptureService : Service() {
             finish(screenshotPath = null)
             return
         }
-        mainHandler.postDelayed({ captureArmed = true }, BUBBLE_SETTLE_MS)
         mainHandler.postDelayed(captureTimeout, CAPTURE_TIMEOUT_MS)
     }
 
     private fun onFrame(reader: ImageReader) {
-        if (!captureArmed || frameHandled || finished) return
+        if (frameHandled || finished) return
         val image = reader.acquireLatestImage() ?: return
         frameHandled = true
         val bitmap = try {
