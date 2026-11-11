@@ -46,6 +46,7 @@ fun FloatingAssistantOverlay(
     onBubbleTap: () -> Unit,
     onDrag: (Float, Float) -> Unit,
     onCollapse: () -> Unit,
+    onExtractText: () -> Unit,
     onOpenVault: () -> Unit,
     onHide: () -> Unit,
 ) {
@@ -54,6 +55,7 @@ fun FloatingAssistantOverlay(
         AnimatedVisibility(visible = expanded, enter = fadeIn(), exit = fadeOut()) {
             ActionPanel(
                 onCollapse = onCollapse,
+                onExtractText = onExtractText,
                 onOpenVault = onOpenVault,
                 onHide = onHide,
             )
@@ -97,6 +99,7 @@ private fun Bubble(
 @Composable
 private fun ActionPanel(
     onCollapse: () -> Unit,
+    onExtractText: () -> Unit,
     onOpenVault: () -> Unit,
     onHide: () -> Unit,
 ) {
@@ -129,7 +132,7 @@ private fun ActionPanel(
             }
 
             PendingActionRow(label = "Save this screen")
-            PendingActionRow(label = "Extract text")
+            ActionRow(label = "Extract text", onClick = onExtractText)
             PendingActionRow(label = "View extracted content")
             PendingActionRow(label = "Save with notes")
 
@@ -148,6 +151,17 @@ private fun ActionPanel(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun ActionRow(label: String, onClick: () -> Unit) {
+    TextButton(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
     }
 }
 

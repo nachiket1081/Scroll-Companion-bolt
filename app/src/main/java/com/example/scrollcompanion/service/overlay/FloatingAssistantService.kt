@@ -14,6 +14,7 @@ import android.os.Build
 import android.os.IBinder
 import android.provider.Settings
 import android.view.Gravity
+import android.view.View
 import android.view.WindowManager
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -25,6 +26,7 @@ import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.example.scrollcompanion.MainActivity
+import com.example.scrollcompanion.service.capture.CaptureConsentActivity
 import com.example.scrollcompanion.ui.navigation.TopLevelDestination
 import com.example.scrollcompanion.ui.theme.ScrollCompanionTheme
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -62,7 +64,11 @@ class FloatingAssistantService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == ACTION_STOP) stopSelf()
+        when (intent?.action) {
+            ACTION_STOP -> stopSelf()
+            ACTION_SHOW_BUBBLE -> overlayView?.visibility = View.VISIBLE
+            ACTION_HIDE_BUBBLE -> overlayView?.visibility = View.INVISIBLE
+        }
         return START_NOT_STICKY
     }
 
@@ -128,6 +134,7 @@ class FloatingAssistantService : Service() {
                         onBubbleTap = { expanded = !expanded },
                         onDrag = { dx, dy -> moveBy(dx, dy) },
                         onCollapse = { expanded = false },
+                        onExtractText = ::requestScreenText,
                         onOpenVault = ::openVault,
                         onHide = { stopSelf() },
                     )
@@ -158,6 +165,13 @@ class FloatingAssistantService : Service() {
         windowManager.updateViewLayout(view, layoutParams)
     }
 
+    private fun requestScreenText() {
+        expanded = false
+        startActivity(
+            Intent(this, CaptureConsentActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        )
+    }
+
     private fun openVault() {
         startActivity(
             Intent(this, MainActivity::class.java)
@@ -169,6 +183,8 @@ class FloatingAssistantService : Service() {
 
     companion object {
         private const val ACTION_STOP = "com.example.scrollcompanion.action.STOP_FLOATING_ASSISTANT"
+        private const val ACTION_SHOW_BUBBLE = "com.example.scrollcompanion.action.SHOW_BUBBLE"
+        private const val ACTION_HIDE_BUBBLE = "com.example.scrollcompanion.action.HIDE_BUBBLE"
         private const val CHANNEL_ID = "floating_assistant"
         private const val NOTIFICATION_ID = 1001
 
@@ -186,6 +202,13 @@ class FloatingAssistantService : Service() {
 
         fun stop(context: Context) {
             context.stopService(Intent(context, FloatingAssistantService::class.java))
+        }
+
+        fun setBubbleVisible(context: Context, visible: Boolean) {
+            context.startService(
+                Intent(context, FloatingAssistantService::class.java)
+                    .setAction(if (visible) ACTION_SHOW_BUBBLE else ACTION_HIDE_BUBBLE),
+            )
         }
     }
 }
