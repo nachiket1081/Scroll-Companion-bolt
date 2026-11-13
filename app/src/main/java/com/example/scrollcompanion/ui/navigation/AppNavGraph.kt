@@ -23,7 +23,9 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
+import androidx.navigation.NavType
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -31,9 +33,15 @@ import com.example.scrollcompanion.ScrollCompanionApp
 import com.example.scrollcompanion.ui.screens.home.HomeScreen
 import com.example.scrollcompanion.ui.screens.rediscover.RediscoverScreen
 import com.example.scrollcompanion.ui.screens.settings.SettingsScreen
+import com.example.scrollcompanion.ui.screens.vault.VaultDetailScreen
 import com.example.scrollcompanion.ui.screens.vault.VaultScreen
 import com.example.scrollcompanion.viewmodel.HomeViewModel
+import com.example.scrollcompanion.viewmodel.RediscoverViewModel
+import com.example.scrollcompanion.viewmodel.SettingsViewModel
+import com.example.scrollcompanion.viewmodel.VaultDetailViewModel
 import com.example.scrollcompanion.viewmodel.VaultViewModel
+
+private const val VAULT_DETAIL_ROUTE = "vault_detail/{id}"
 
 enum class TopLevelDestination(
     val route: String,
@@ -67,7 +75,8 @@ fun AppNavGraph(
             NavigationBar {
                 TopLevelDestination.entries.forEach { destination ->
                     NavigationBarItem(
-                        selected = currentDestination?.hierarchy?.any { it.route == destination.route } == true,
+                        selected = currentDestination?.hierarchy?.any { it.route == destination.route } == true ||
+                            (destination == TopLevelDestination.VAULT && currentDestination?.route == VAULT_DETAIL_ROUTE),
                         onClick = { navController.navigateToTopLevel(destination.route) },
                         icon = { Icon(destination.icon, contentDescription = destination.label) },
                         label = { Text(destination.label) },
@@ -91,6 +100,7 @@ fun AppNavGraph(
                 HomeScreen(
                     uiState = uiState,
                     onOpenVault = { navController.navigateToTopLevel(TopLevelDestination.VAULT.route) },
+                    onItemClick = { id -> navController.navigate("vault_detail/$id") },
                 )
             }
 
@@ -101,15 +111,65 @@ fun AppNavGraph(
                     },
                 )
                 val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-                VaultScreen(uiState = uiState)
+                VaultScreen(
+                    uiState = uiState,
+                    onItemClick = { id -> navController.navigate("vault_detail/$id") },
+                    onCategorySelected = viewModel::selectCategory,
+                    onQueryChanged = viewModel::onQueryChanged,
+                )
+            }
+
+            composable(
+                route = VAULT_DETAIL_ROUTE,
+                arguments = listOf(navArgument("id") { type = NavType.LongType }),
+            ) { entry ->
+                val id = entry.arguments?.getLong("id") ?: 0L
+                val viewModel: VaultDetailViewModel = viewModel(
+                    factory = viewModelFactory {
+                        initializer { VaultDetailViewModel(container.contentRepository, id) }
+                    },
+                )
+                val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+                val categories by viewModel.categories.collectAsStateWithLifecycle()
+                val tagSuggestions by viewModel.tagSuggestions.collectAsStateWithLifecycle()
+                VaultDetailScreen(
+                    uiState = uiState,
+                    categories = categories,
+                    tagSuggestions = tagSuggestions,
+                    onCreateCategory = viewModel::createCategory,
+                    onBack = { navController.popBackStack() },
+                    onSaveEdits = viewModel::saveEdits,
+                    onDelete = { viewModel.delete { navController.popBackStack() } },
+                )
             }
 
             composable(TopLevelDestination.REDISCOVER.route) {
-                RediscoverScreen()
+                val viewModel: RediscoverViewModel = viewModel(
+                    factory = viewModelFactory {
+                        initializer { RediscoverViewModel(container.contentRepository) }
+                    },
+                )
+                val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+                RediscoverScreen(
+                    uiState = uiState,
+                    onItemClick = { id -> navController.navigate("vault_detail/$id") },
+                    onReviewed = viewModel::markReviewed,
+                )
             }
 
             composable(TopLevelDestination.SETTINGS.route) {
-                SettingsScreen()
+                val viewModel: SettingsViewModel = viewModel(
+                    factory = viewModelFactory {
+                        initializer { SettingsViewModel(container.contentRepository) }
+                    },
+                )
+                val categories by viewModel.categories.collectAsStateWithLifecycle()
+                SettingsScreen(
+                    categories = categories,
+                    onAddCategory = viewModel::addCategory,
+                    onRenameCategory = viewModel::renameCategory,
+                    onDeleteCategory = viewModel::deleteCategory,
+                )
             }
         }
     }

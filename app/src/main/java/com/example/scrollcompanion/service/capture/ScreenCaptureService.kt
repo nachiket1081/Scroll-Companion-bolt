@@ -3,12 +3,12 @@ package com.example.scrollcompanion.service.capture
 import android.app.Activity
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
-import android.graphics.Color
 import android.graphics.PixelFormat
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
@@ -142,11 +142,6 @@ class ScreenCaptureService : Service() {
         }
         mainHandler.removeCallbacks(captureTimeout)
         scope.launch {
-            if (bitmap.isBlank()) {
-                bitmap.recycle()
-                finish(screenshotPath = null)
-                return@launch
-            }
             val path = withContext(Dispatchers.IO) { saveScreenshot(this@ScreenCaptureService, bitmap) }
             bitmap.recycle()
             finish(screenshotPath = path)
@@ -159,7 +154,23 @@ class ScreenCaptureService : Service() {
         mainHandler.removeCallbacks(captureTimeout)
         releaseCapture()
         FloatingAssistantService.setBubbleVisible(this, true)
-        startActivity(ExtractedTextActivity.intent(this, screenshotPath))
+
+        val intent = ExtractedTextActivity.intent(this, screenshotPath)
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        try {
+            pendingIntent.send()
+        } catch (e: Exception) {
+            try {
+                startActivity(intent)
+            } catch (e2: Exception) {
+                // Fallback
+            }
+        }
         stopSelf()
     }
 
@@ -181,7 +192,6 @@ class ScreenCaptureService : Service() {
         private const val BUBBLE_SETTLE_MS = 200L
         private const val CAPTURE_TIMEOUT_MS = 5_000L
         private const val SCREENSHOT_DIRECTORY = "captures"
-        private const val BLANK_CHECK_GRID = 8
 
         fun start(context: Context, resultCode: Int, data: Intent) {
             ContextCompat.startForegroundService(
@@ -197,20 +207,6 @@ class ScreenCaptureService : Service() {
             val file = File(directory, "capture_${System.currentTimeMillis()}.jpg")
             file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, 90, it) }
             return file.absolutePath
-        }
-
-        private fun Bitmap.isBlank(): Boolean {
-            val sampledColors = HashSet<Int>()
-            for (column in 1..BLANK_CHECK_GRID) {
-                for (row in 1..BLANK_CHECK_GRID) {
-                    sampledColors += getPixel(
-                        width * column / (BLANK_CHECK_GRID + 1),
-                        height * row / (BLANK_CHECK_GRID + 1),
-                    )
-                }
-            }
-            val color = sampledColors.singleOrNull() ?: return false
-            return Color.alpha(color) == 0 || (color and 0x00FFFFFF) == 0
         }
 
         private fun Image.toBitmap(): Bitmap {

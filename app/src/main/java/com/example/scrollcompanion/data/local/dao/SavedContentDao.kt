@@ -24,6 +24,9 @@ interface SavedContentDao {
     @Query("SELECT * FROM saved_content WHERE id = :id")
     suspend fun getById(id: Long): SavedContentEntity?
 
+    @Query("SELECT * FROM saved_content")
+    suspend fun getAll(): List<SavedContentEntity>
+
     @Query("SELECT * FROM saved_content ORDER BY savedAt DESC")
     fun observeAll(): Flow<List<SavedContentEntity>>
 

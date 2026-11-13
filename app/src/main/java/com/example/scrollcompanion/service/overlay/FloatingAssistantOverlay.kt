@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -39,19 +40,33 @@ import androidx.compose.ui.unit.dp
 
 private val BubbleSize = 56.dp
 private val PanelWidth = 232.dp
+private val DockedTouchWidth = 28.dp
+private val DockedTabWidth = 14.dp
+private val DockedTabHeight = 56.dp
+
+enum class DockSide { LEFT, RIGHT }
 
 @Composable
 fun FloatingAssistantOverlay(
     expanded: Boolean,
+    docked: Boolean,
+    dockSide: DockSide,
     onBubbleTap: () -> Unit,
+    onDockedTap: () -> Unit,
+    onDragStart: () -> Unit,
     onDrag: (Float, Float) -> Unit,
+    onDragEnd: () -> Unit,
     onCollapse: () -> Unit,
     onExtractText: () -> Unit,
     onOpenVault: () -> Unit,
     onHide: () -> Unit,
 ) {
+    if (docked && !expanded) {
+        DockedTab(side = dockSide, onTap = onDockedTap)
+        return
+    }
     Column {
-        Bubble(onTap = onBubbleTap, onDrag = onDrag)
+        Bubble(onTap = onBubbleTap, onDragStart = onDragStart, onDrag = onDrag, onDragEnd = onDragEnd)
         AnimatedVisibility(visible = expanded, enter = fadeIn(), exit = fadeOut()) {
             ActionPanel(
                 onCollapse = onCollapse,
@@ -63,13 +78,44 @@ fun FloatingAssistantOverlay(
     }
 }
 
+/** Slim tab shown on a screen edge when the bubble has been idle. Tap it to bring the bubble back. */
+@Composable
+private fun DockedTab(side: DockSide, onTap: () -> Unit) {
+    val currentOnTap by rememberUpdatedState(onTap)
+    val shape = if (side == DockSide.LEFT) {
+        RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp)
+    } else {
+        RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp)
+    }
+    Box(
+        modifier = Modifier
+            .width(DockedTouchWidth)
+            .height(DockedTabHeight + 16.dp)
+            .pointerInput(Unit) { detectTapGestures(onTap = { currentOnTap() }) },
+        contentAlignment = if (side == DockSide.LEFT) Alignment.CenterStart else Alignment.CenterEnd,
+    ) {
+        Box(
+            modifier = Modifier
+                .width(DockedTabWidth)
+                .height(DockedTabHeight)
+                .shadow(4.dp, shape)
+                .clip(shape)
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.85f)),
+        )
+    }
+}
+
 @Composable
 private fun Bubble(
     onTap: () -> Unit,
+    onDragStart: () -> Unit,
     onDrag: (Float, Float) -> Unit,
+    onDragEnd: () -> Unit,
 ) {
     val currentOnTap by rememberUpdatedState(onTap)
+    val currentOnDragStart by rememberUpdatedState(onDragStart)
     val currentOnDrag by rememberUpdatedState(onDrag)
+    val currentOnDragEnd by rememberUpdatedState(onDragEnd)
 
     Box(
         modifier = Modifier
@@ -81,7 +127,11 @@ private fun Bubble(
                 detectTapGestures(onTap = { currentOnTap() })
             }
             .pointerInput(Unit) {
-                detectDragGestures { change, dragAmount ->
+                detectDragGestures(
+                    onDragStart = { currentOnDragStart() },
+                    onDragEnd = { currentOnDragEnd() },
+                    onDragCancel = { currentOnDragEnd() },
+                ) { change, dragAmount ->
                     change.consume()
                     currentOnDrag(dragAmount.x, dragAmount.y)
                 }

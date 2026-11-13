@@ -28,6 +28,7 @@ import com.example.scrollcompanion.viewmodel.HomeUiState
 fun HomeScreen(
     uiState: HomeUiState,
     onOpenVault: () -> Unit,
+    onItemClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -91,7 +92,7 @@ fun HomeScreen(
             }
         } else {
             items(uiState.recent, key = { it.id }) { item ->
-                ContentCard(item = item)
+                ContentCard(item = item, onClick = { onItemClick(item.id) })
             }
         }
     }

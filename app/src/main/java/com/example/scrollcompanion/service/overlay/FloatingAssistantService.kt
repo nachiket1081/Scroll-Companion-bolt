@@ -11,7 +11,9 @@ import android.content.pm.ServiceInfo
 import android.graphics.PixelFormat
 import android.net.Uri
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.provider.Settings
 import android.view.Gravity
 import android.view.View
@@ -27,6 +29,8 @@ import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.example.scrollcompanion.MainActivity
 import com.example.scrollcompanion.service.capture.CaptureConsentActivity
+import com.example.scrollcompanion.service.capture.CaptureSession
+import com.example.scrollcompanion.service.capture.ForegroundAppDetector
 import com.example.scrollcompanion.ui.navigation.TopLevelDestination
 import com.example.scrollcompanion.ui.theme.ScrollCompanionTheme
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -49,6 +53,10 @@ class FloatingAssistantService : Service() {
         gravity = Gravity.TOP or Gravity.START
     }
     private var expanded by mutableStateOf(false)
+    private var docked by mutableStateOf(false)
+    private var dockSide by mutableStateOf(DockSide.RIGHT)
+    private val handler = Handler(Looper.getMainLooper())
+    private val dockRunnable = Runnable { dockToNearestEdge() }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -73,6 +81,7 @@ class FloatingAssistantService : Service() {
     }
 
     override fun onDestroy() {
+        handler.removeCallbacks(dockRunnable)
         overlayView?.let { windowManager.removeView(it) }
         overlayView = null
         overlayLifecycle?.destroy()
@@ -131,9 +140,17 @@ class FloatingAssistantService : Service() {
                 ScrollCompanionTheme {
                     FloatingAssistantOverlay(
                         expanded = expanded,
-                        onBubbleTap = { expanded = !expanded },
+                        docked = docked,
+                        dockSide = dockSide,
+                        onBubbleTap = ::onBubbleTap,
+                        onDockedTap = ::undock,
+                        onDragStart = ::cancelDock,
                         onDrag = { dx, dy -> moveBy(dx, dy) },
-                        onCollapse = { expanded = false },
+                        onDragEnd = ::scheduleDock,
+                        onCollapse = {
+                            expanded = false
+                            scheduleDock()
+                        },
                         onExtractText = ::requestScreenText,
                         onOpenVault = ::openVault,
                         onHide = { stopSelf() },
@@ -149,6 +166,35 @@ class FloatingAssistantService : Service() {
         overlayView = view
         windowManager.addView(view, layoutParams)
         _isRunning.value = true
+        scheduleDock()
+    }
+
+    private fun onBubbleTap() {
+        expanded = !expanded
+        if (expanded) cancelDock() else scheduleDock()
+    }
+
+    private fun undock() {
+        docked = false
+        scheduleDock()
+    }
+
+    private fun scheduleDock() {
+        handler.removeCallbacks(dockRunnable)
+        if (!expanded) handler.postDelayed(dockRunnable, DOCK_DELAY_MS)
+    }
+
+    private fun cancelDock() {
+        handler.removeCallbacks(dockRunnable)
+    }
+
+    /** Tucks the bubble into whichever screen edge it is closest to. */
+    private fun dockToNearestEdge() {
+        val view = overlayView ?: return
+        if (expanded || docked) return
+        val center = layoutParams.x + view.width / 2
+        dockSide = if (center < resources.displayMetrics.widthPixels / 2) DockSide.LEFT else DockSide.RIGHT
+        docked = true
     }
 
     private fun moveBy(dx: Float, dy: Float) {
@@ -160,13 +206,21 @@ class FloatingAssistantService : Service() {
     private fun keepOnScreen() {
         val view = overlayView ?: return
         val metrics = resources.displayMetrics
-        layoutParams.x = layoutParams.x.coerceIn(0, (metrics.widthPixels - view.width).coerceAtLeast(0))
+        val maxX = (metrics.widthPixels - view.width).coerceAtLeast(0)
+        layoutParams.x = when {
+            docked && dockSide == DockSide.LEFT -> 0
+            docked -> maxX
+            else -> layoutParams.x.coerceIn(0, maxX)
+        }
         layoutParams.y = layoutParams.y.coerceIn(0, (metrics.heightPixels - view.height).coerceAtLeast(0))
         windowManager.updateViewLayout(view, layoutParams)
     }
 
     private fun requestScreenText() {
         expanded = false
+        scheduleDock()
+        // Must be read now, while the app the user was in is still the last one in the foreground.
+        CaptureSession.sourceApp = ForegroundAppDetector.lastForegroundAppLabel(this)
         startActivity(
             Intent(this, CaptureConsentActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
         )
@@ -187,6 +241,7 @@ class FloatingAssistantService : Service() {
         private const val ACTION_HIDE_BUBBLE = "com.example.scrollcompanion.action.HIDE_BUBBLE"
         private const val CHANNEL_ID = "floating_assistant"
         private const val NOTIFICATION_ID = 1001
+        private const val DOCK_DELAY_MS = 3_000L
 
         private val _isRunning = MutableStateFlow(false)
         val isRunning: StateFlow<Boolean> = _isRunning.asStateFlow()
