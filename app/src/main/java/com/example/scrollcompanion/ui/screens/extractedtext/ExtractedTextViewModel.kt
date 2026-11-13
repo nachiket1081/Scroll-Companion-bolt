@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.scrollcompanion.data.local.entities.CategoryEntity
 import com.example.scrollcompanion.data.repository.ContentRepository
 import com.example.scrollcompanion.domain.TitleSuggester
+import android.util.Log
 import com.example.scrollcompanion.ml.ocr.ScreenTextRecognizer
 import com.example.scrollcompanion.ml.ocr.SystemBarInsets
 import com.example.scrollcompanion.utils.LinkExtractor
@@ -137,6 +138,7 @@ class ExtractedTextViewModel(
         viewModelScope.launch {
             _uiState.value = try {
                 val text = readText(path)
+                Log.e("ScrollCapture", "OCR returned ${text.length} chars: \"${text.take(80)}\"")
                 if (text.isBlank()) {
                     ExtractedTextUiState.NoText
                 } else {
@@ -144,6 +146,7 @@ class ExtractedTextViewModel(
                     ExtractedTextUiState.Ready(text)
                 }
             } catch (e: Exception) {
+                Log.e("ScrollCapture", "readText threw", e)
                 ExtractedTextUiState.Error(READ_FAILED_MESSAGE)
             }
         }
