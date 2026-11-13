@@ -28,6 +28,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.TextButton
 import com.example.scrollcompanion.data.local.entities.CategoryEntity
+import com.example.scrollcompanion.ui.components.PermissionRationaleDialog
 import com.example.scrollcompanion.ui.components.CategoryNameDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.OutlinedButton
@@ -48,7 +49,10 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import com.example.scrollcompanion.service.capture.ForegroundAppDetector
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import android.content.Intent
+import android.net.Uri
 
+private const val PRIVACY_POLICY_URL = "https://nachiket1081.github.io/Scroll-Companion-Privacy-Policy/"
 @Composable
 fun SettingsScreen(
     categories: List<CategoryEntity>,
@@ -59,6 +63,8 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
     var usageAccess by remember { mutableStateOf(ForegroundAppDetector.hasUsageAccess(context)) }
+    var showUsageAccessRationale by remember { mutableStateOf(false) }
+    var showReminderNotificationRationale by remember { mutableStateOf(false) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         usageAccess = ForegroundAppDetector.hasUsageAccess(context)
     }
@@ -75,6 +81,32 @@ fun SettingsScreen(
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted -> if (granted) enableReminders() }
+
+    if (showUsageAccessRationale) {
+        PermissionRationaleDialog(
+            title = "Usage access",
+            message = "This lets saved items show which app they came from, like \"Instagram\" or " +
+                "\"Chrome\". It only reads which app is in the foreground, never what that app " +
+                "shows on screen, and everything stays on this device. This is optional.",
+            onContinue = {
+                showUsageAccessRationale = false
+                context.startActivity(ForegroundAppDetector.usageAccessIntent())
+            },
+            onDismiss = { showUsageAccessRationale = false },
+        )
+    }
+    if (showReminderNotificationRationale) {
+        PermissionRationaleDialog(
+            title = "Notifications",
+            message = "Daily reminders use a notification to show a few saved items worth " +
+                "another look. Nothing is sent anywhere else.",
+            onContinue = {
+                showReminderNotificationRationale = false
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            },
+            onDismiss = { showReminderNotificationRationale = false },
+        )
+    }
 
     Column(
         modifier = modifier
@@ -110,7 +142,7 @@ fun SettingsScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 if (!usageAccess) {
-                    Button(onClick = { context.startActivity(ForegroundAppDetector.usageAccessIntent()) }) {
+                    Button(onClick = { showUsageAccessRationale = true }) {
                         Text("Open usage access settings")
                     }
                 }
@@ -143,7 +175,7 @@ fun SettingsScreen(
                                 ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
                                 PackageManager.PERMISSION_GRANTED
                             ) {
-                                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                showReminderNotificationRationale = true
                             } else {
                                 enableReminders()
                             }
@@ -216,17 +248,29 @@ fun SettingsScreen(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = "Privacy",
+                    text = "Privacy & Data",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
-                    text = "Everything you save stays on this device. Nothing is uploaded.",
+                    text = "Your saved discoveries and screen text processing stay entirely on this device.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                OutlinedButton(
+                    onClick = {
+                        runCatching {
+                            context.startActivity(
+                                Intent(Intent.ACTION_VIEW, Uri.parse(PRIVACY_POLICY_URL)),
+                            )
+                        }
+                    },
+                    modifier = Modifier.padding(top = 4.dp),
+                ) {
+                    Text("View privacy policy")
+                }
             }
         }
     }

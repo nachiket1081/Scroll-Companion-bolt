@@ -37,6 +37,8 @@ fun FloatingAssistantCard(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val isRunning by FloatingAssistantService.isRunning.collectAsStateWithLifecycle()
     var overlayGranted by remember { mutableStateOf(FloatingAssistantService.canDrawOverlays(context)) }
+    var showOverlayRationale by remember { mutableStateOf(false) }
+    var showNotificationRationale by remember { mutableStateOf(false) }
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         overlayGranted = FloatingAssistantService.canDrawOverlays(context)
@@ -46,6 +48,32 @@ fun FloatingAssistantCard(modifier: Modifier = Modifier) {
         ActivityResultContracts.RequestPermission(),
     ) {
         FloatingAssistantService.start(context)
+    }
+
+    if (showOverlayRationale) {
+        PermissionRationaleDialog(
+            title = "Display over other apps",
+            message = "Scroll Companion needs this so it can show the floating button you tap to " +
+                "save something while you're in another app. You'll be taken to a system settings " +
+                "screen next — turn the switch on there, then come back.",
+            onContinue = {
+                showOverlayRationale = false
+                context.startActivity(FloatingAssistantService.overlayPermissionIntent(context))
+            },
+            onDismiss = { showOverlayRationale = false },
+        )
+    }
+    if (showNotificationRationale) {
+        PermissionRationaleDialog(
+            title = "Notifications",
+            message = "Scroll Companion uses a notification to let you know when your extracted " +
+                "text is ready to view and save.",
+            onContinue = {
+                showNotificationRationale = false
+                notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            },
+            onDismiss = { showNotificationRationale = false },
+        )
     }
 
     val description = when {
@@ -74,7 +102,7 @@ fun FloatingAssistantCard(modifier: Modifier = Modifier) {
             Spacer(modifier = Modifier.height(12.dp))
             when {
                 !overlayGranted -> Button(
-                    onClick = { context.startActivity(FloatingAssistantService.overlayPermissionIntent(context)) },
+                    onClick = { showOverlayRationale = true },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text("Allow display over other apps")
@@ -93,7 +121,7 @@ fun FloatingAssistantCard(modifier: Modifier = Modifier) {
                             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
                             PackageManager.PERMISSION_GRANTED
                         if (needsNotificationPermission) {
-                            notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            showNotificationRationale = true
                         } else {
                             FloatingAssistantService.start(context)
                         }
