@@ -2,6 +2,8 @@ package com.example.scrollcompanion.ui.components
 
 import android.net.Uri
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -23,12 +26,16 @@ import com.example.scrollcompanion.data.local.entities.SavedContentEntity
 import com.example.scrollcompanion.domain.ContentPreview
 import com.example.scrollcompanion.utils.formatSavedDate
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ContentCard(
     item: SavedContentEntity,
     modifier: Modifier = Modifier,
     categoryName: String? = null,
     onClick: () -> Unit = {},
+    onLongClick: () -> Unit = {},
+    selectable: Boolean = false,
+    selected: Boolean = false,
 ) {
     val note = item.personalNotes?.takeIf { it.isNotBlank() }
     val preview = remember(item.extractedText, item.title) { ContentPreview.of(item.extractedText, item.title) }
@@ -37,16 +44,29 @@ fun ContentCard(
     }
 
     Card(
-        onClick = onClick,
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        colors = CardDefaults.cardColors(
+            containerColor = if (selected) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else {
+                MaterialTheme.colorScheme.surface
+            },
+        ),
+        border = BorderStroke(
+            1.dp,
+            if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+        ),
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            if (selectable) {
+                Checkbox(checked = selected, onCheckedChange = { onLongClick() })
+            }
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(4.dp),

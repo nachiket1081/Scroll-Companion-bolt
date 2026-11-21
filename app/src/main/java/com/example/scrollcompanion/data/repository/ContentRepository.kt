@@ -78,6 +78,17 @@ class ContentRepository(
         )
     }
 
+    suspend fun deleteAll(items: List<SavedContentEntity>) {
+        items.forEach { delete(it) }
+    }
+
+    suspend fun setCategoryForAll(ids: List<Long>, categoryId: Long?) {
+        ids.forEach { id ->
+            val item = contentDao.getById(id) ?: return@forEach
+            contentDao.update(item.copy(categoryId = categoryId, updatedAt = System.currentTimeMillis()))
+        }
+    }
+
     suspend fun delete(item: SavedContentEntity) {
         contentDao.delete(item)
         item.screenshotPath?.let { runCatching { File(it).delete() } }

@@ -69,6 +69,9 @@ class ShareSaveActivity : ComponentActivity() {
                     onSave = {
                         viewModel.save(
                             onSaved = {
+                                window.decorView.performHapticFeedback(
+                                    android.view.HapticFeedbackConstants.CONFIRM,
+                                )
                                 Toast.makeText(this, "Saved to Scroll Companion", Toast.LENGTH_SHORT).show()
                                 finish()
                             },

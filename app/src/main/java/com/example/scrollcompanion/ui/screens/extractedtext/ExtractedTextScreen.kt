@@ -18,9 +18,12 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
@@ -146,6 +149,10 @@ fun ExtractedTextScreen(
             }
         }
 
+    val haptics = LocalHapticFeedback.current
+    LaunchedEffect(saveState) {
+        if (saveState == SaveState.Saved) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+    }
         val readyText = (uiState as? ExtractedTextUiState.Ready)?.text.orEmpty()
         val detectedLink = remember(readyText) { LinkExtractor.firstUrl(readyText) }
         if (detectedLink != null) {

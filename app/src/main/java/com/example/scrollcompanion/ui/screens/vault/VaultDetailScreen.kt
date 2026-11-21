@@ -70,11 +70,39 @@ fun VaultDetailScreen(
     onCreateCategory: (name: String, onCreated: (Long) -> Unit) -> Unit,
     onSaveEdits: (title: String, note: String, categoryId: Long?, tags: List<String>) -> Unit,
     onDelete: () -> Unit,
+    onUndoDelete: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var editing by rememberSaveable { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
     val item = uiState.item
+
+    if (uiState.isPendingDelete) {
+        Box(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+            Card(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.inverseSurface),
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("Deleted", color = MaterialTheme.colorScheme.inverseOnSurface)
+                    TextButton(onClick = onUndoDelete) {
+                        Text("Undo", color = MaterialTheme.colorScheme.inversePrimary)
+                    }
+                }
+            }
+        }
+        return
+    }
 
     Column(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Row(

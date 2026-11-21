@@ -116,6 +116,10 @@ fun AppNavGraph(
                     onItemClick = { id -> navController.navigate("vault_detail/$id") },
                     onCategorySelected = viewModel::selectCategory,
                     onQueryChanged = viewModel::onQueryChanged,
+                    onToggleItemSelected = viewModel::toggleSelected,
+                    onClearSelection = viewModel::clearSelection,
+                    onDeleteSelected = viewModel::deleteSelected,
+                    onSetCategoryForSelected = viewModel::setCategoryForSelected,
                 )
             }
 
@@ -139,7 +143,8 @@ fun AppNavGraph(
                     onCreateCategory = viewModel::createCategory,
                     onBack = { navController.popBackStack() },
                     onSaveEdits = viewModel::saveEdits,
-                    onDelete = { viewModel.delete { navController.popBackStack() } },
+                    onDelete = { viewModel.requestDelete { navController.popBackStack() } },
+                    onUndoDelete = viewModel::undoDelete,
                 )
             }
 
