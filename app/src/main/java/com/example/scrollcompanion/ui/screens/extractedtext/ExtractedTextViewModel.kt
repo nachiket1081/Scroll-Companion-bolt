@@ -7,6 +7,8 @@ import com.example.scrollcompanion.data.local.entities.CategoryEntity
 import com.example.scrollcompanion.data.repository.ContentRepository
 import com.example.scrollcompanion.domain.TitleSuggester
 import android.util.Log
+import android.content.Context
+import com.example.scrollcompanion.domain.LinkMetadataWorker
 import com.example.scrollcompanion.ml.ocr.ScreenTextRecognizer
 import com.example.scrollcompanion.ml.ocr.SystemBarInsets
 import com.example.scrollcompanion.utils.LinkExtractor
@@ -34,6 +36,7 @@ class ExtractedTextViewModel(
     val sourceApp: String?,
     private val systemBarInsets: SystemBarInsets,
     private val repository: ContentRepository,
+    private val appContext: Context,
 ) : ViewModel() {
 
     private val recognizer = ScreenTextRecognizer()
@@ -110,7 +113,8 @@ class ExtractedTextViewModel(
         _saveState.value = SaveState.Saving
         viewModelScope.launch {
             _saveState.value = try {
-                withContext(Dispatchers.IO) {
+                val detectedUrl = LinkExtractor.firstUrl(text)
+                val id = withContext(Dispatchers.IO) {
                     repository.saveExtractedText(
                         title = _title.value.trim().ifBlank { TitleSuggester.suggest(text, sourceApp, System.currentTimeMillis()) },
                         note = _note.value.trim().ifBlank { null },
@@ -118,10 +122,11 @@ class ExtractedTextViewModel(
                         tags = _tags.value,
                         text = text,
                         sourceApp = sourceApp,
-                        sourceUrl = LinkExtractor.firstUrl(text),
+                        sourceUrl = detectedUrl,
                         tempScreenshotPath = screenshotPath,
                     )
                 }
+                LinkMetadataWorker.enqueue(appContext, id, detectedUrl)
                 SaveState.Saved
             } catch (e: Exception) {
                 SaveState.Failed

@@ -29,6 +29,7 @@ class ShareSaveActivity : ComponentActivity() {
                         now = System.currentTimeMillis(),
                     ),
                     repository = (application as ScrollCompanionApp).container.contentRepository,
+                    appContext = applicationContext,
                 )
             }
         }

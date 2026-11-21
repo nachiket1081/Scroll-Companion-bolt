@@ -27,6 +27,7 @@ class ExtractedTextActivity : ComponentActivity() {
                     sourceApp = intent.getStringExtra(EXTRA_SOURCE_APP) ?: CaptureSession.take(),
                     systemBarInsets = SystemBarInsets.from(applicationContext),
                     repository = (application as ScrollCompanionApp).container.contentRepository,
+                    appContext = applicationContext,
                 )
             }
         }

@@ -32,4 +32,6 @@ data class SavedContentEntity(
     val updatedAt: Long,
     val lastReviewedAt: Long?,
     val reviewCount: Int,
+    val linkDescription: String? = null,
+    val previewImagePath: String? = null,
 )

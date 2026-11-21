@@ -94,6 +94,47 @@ class ContentRepository(
         item.screenshotPath?.let { runCatching { File(it).delete() } }
     }
 
+    /**
+     * Fills in a description and/or preview image fetched from the item's link — but only the
+     * fields that are still empty, so this never overwrites anything the user already has or
+     * has edited by hand. Safe to call from a background job any time after the item was saved.
+     */
+    suspend fun applyFetchedLinkMetadata(id: Long, description: String?, imagePath: String?) {
+        val item = contentDao.getById(id) ?: return
+        val newDescription = item.linkDescription ?: description?.take(LINK_DESCRIPTION_MAX_LENGTH)
+        val newImagePath = item.previewImagePath ?: item.screenshotPath ?: imagePath
+        if (newDescription == item.linkDescription && newImagePath == item.previewImagePath) return
+        contentDao.update(
+            item.copy(
+                linkDescription = newDescription,
+                previewImagePath = if (item.screenshotPath == null) newImagePath else item.previewImagePath,
+            ),
+        )
+    }
+
+    /** Downloads a preview image to permanent storage. Returns null on any failure. */
+    suspend fun downloadPreviewImage(url: String): String? = try {
+        val connection = (java.net.URL(url).openConnection() as java.net.HttpURLConnection).apply {
+            connectTimeout = 4_000
+            readTimeout = 4_000
+            instanceFollowRedirects = true
+        }
+        if (connection.responseCode !in 200..299) {
+            connection.disconnect()
+            null
+        } else {
+            screenshotDirectory.mkdirs()
+            val target = File(screenshotDirectory, "preview_${System.currentTimeMillis()}.jpg")
+            connection.inputStream.use { input ->
+                target.outputStream().use { output -> input.copyTo(output, bufferSize = 8 * 1024) }
+            }
+            connection.disconnect()
+            target.absolutePath
+        }
+    } catch (e: Exception) {
+        null
+    }
+
     suspend fun saveExtractedText(
         title: String,
         note: String?,
@@ -142,5 +183,6 @@ class ContentRepository(
 
     private companion object {
         const val CATEGORY_NAME_MAX_LENGTH = 40
+        const val LINK_DESCRIPTION_MAX_LENGTH = 280
     }
 }

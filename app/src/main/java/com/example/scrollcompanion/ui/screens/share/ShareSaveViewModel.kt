@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.scrollcompanion.data.local.entities.CategoryEntity
 import com.example.scrollcompanion.data.repository.ContentRepository
+import android.content.Context
+import com.example.scrollcompanion.domain.LinkMetadataWorker
 import com.example.scrollcompanion.domain.SharedContent
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -15,6 +17,7 @@ import kotlinx.coroutines.launch
 class ShareSaveViewModel(
     val content: SharedContent?,
     private val repository: ContentRepository,
+    private val appContext: Context,
 ) : ViewModel() {
 
     private val _title = MutableStateFlow(content?.title.orEmpty())
@@ -66,7 +69,7 @@ class ShareSaveViewModel(
         _isSaving.value = true
         viewModelScope.launch {
             try {
-                repository.saveExtractedText(
+                val id = repository.saveExtractedText(
                     title = _title.value.trim().ifBlank { shared.title },
                     note = _note.value.trim().ifBlank { null },
                     categoryId = _categoryId.value,
@@ -76,6 +79,7 @@ class ShareSaveViewModel(
                     sourceUrl = shared.url,
                     tempScreenshotPath = null,
                 )
+                LinkMetadataWorker.enqueue(appContext, id, shared.url)
                 onSaved()
             } catch (e: Exception) {
                 _isSaving.value = false

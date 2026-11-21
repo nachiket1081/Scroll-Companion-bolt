@@ -288,6 +288,48 @@ private fun DetailContent(
             }
         }
 
+        if (!editing && item.personalNotes.isNullOrBlank() && !item.linkDescription.isNullOrBlank()) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+            ) {
+                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = "From the link",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = item.linkDescription,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+            }
+        }
+
+        if (!editing && item.personalNotes.isNullOrBlank() && !item.linkDescription.isNullOrBlank()) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+            ) {
+                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = "From the link",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = item.linkDescription,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+            }
+        }
+
         if (!item.sourceUrl.isNullOrBlank()) {
             Text(
                 text = item.sourceUrl,
@@ -302,7 +344,7 @@ private fun DetailContent(
             )
         }
 
-        item.screenshotPath?.let { path ->
+        (item.screenshotPath ?: item.previewImagePath)?.let { path ->
             val bitmap by produceState<ImageBitmap?>(initialValue = null, path) {
                 value = withContext(Dispatchers.IO) {
                     runCatching {

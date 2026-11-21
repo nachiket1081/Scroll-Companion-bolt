@@ -38,6 +38,8 @@ fun ContentCard(
     selected: Boolean = false,
 ) {
     val note = item.personalNotes?.takeIf { it.isNotBlank() }
+    val fetchedDescription = item.linkDescription?.takeIf { it.isNotBlank() }
+    val thumbnailPath = item.screenshotPath ?: item.previewImagePath
     val preview = remember(item.extractedText, item.title) { ContentPreview.of(item.extractedText, item.title) }
     val domain = remember(item.sourceUrl) {
         item.sourceUrl?.let { runCatching { Uri.parse(it).host?.removePrefix("www.") }.getOrNull() }
@@ -107,6 +109,24 @@ fun ContentCard(
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
+                } else if (fetchedDescription != null) {
+                    // Fetched from the link's own page when the share gave us no caption.
+                    Text(
+                        text = fetchedDescription,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                } else if (fetchedDescription != null) {
+                    // Fetched from the link's own page when the share gave us no caption.
+                    Text(
+                        text = fetchedDescription,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
                 if (item.tags.isNotEmpty()) {
                     Text(
@@ -127,7 +147,7 @@ fun ContentCard(
                     )
                 }
             }
-            item.screenshotPath?.let { path ->
+            thumbnailPath?.let { path ->
                 ScreenshotThumbnail(path = path, modifier = Modifier.size(72.dp))
             }
         }

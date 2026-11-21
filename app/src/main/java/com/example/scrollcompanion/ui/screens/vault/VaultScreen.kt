@@ -83,15 +83,6 @@ fun VaultScreen(
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showCategoryPicker by remember { mutableStateOf(false) }
 
-    if (selectionMode) {
-        SelectionToolbar(
-            count = uiState.selectedIds.size,
-            onCancel = onClearSelection,
-            onDelete = { showDeleteConfirm = true },
-            onCategorize = { showCategoryPicker = true },
-        )
-    }
-
     if (showDeleteConfirm) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
@@ -125,7 +116,16 @@ fun VaultScreen(
         )
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
+    Column(modifier = modifier.fillMaxSize()) {
+        if (selectionMode) {
+            SelectionToolbar(
+                count = uiState.selectedIds.size,
+                onCancel = onClearSelection,
+                onDelete = { showDeleteConfirm = true },
+                onCategorize = { showCategoryPicker = true },
+            )
+        }
+        Box(modifier = Modifier.weight(1f)) {
         when {
             uiState.isLoading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             uiState.totalCount == 0 -> EmptyState(
@@ -195,6 +195,7 @@ fun VaultScreen(
                     )
                 }
             }
+        }
         }
     }
 }
